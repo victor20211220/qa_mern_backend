@@ -8,6 +8,7 @@ import Answer, {IAnswer} from "../models/Answer";
 import Questioner from "../models/Questioner";
 
 const logPath = path.join(__dirname, '../../mails.log');
+const errorLogPath = path.join(__dirname, '../../errors.log');
 
 interface EmailPayload {
     to: string;
@@ -19,6 +20,7 @@ export const isLocal = process.env.NODE_ENV !== 'production';
 export const sendEmail = async ({to, subject, html}: EmailPayload) => {
     const timestamp = new Date().toISOString();
     const logEntry = `[${timestamp}] TO: ${to} | SUBJECT: ${subject}\n${html}\n\n`;
+
 
     // Always log emails
     fs.appendFileSync(logPath, logEntry);
@@ -39,10 +41,15 @@ export const sendEmail = async ({to, subject, html}: EmailPayload) => {
     });
 
     await transporter.sendMail({
-        from: `"Q&A App" <${process.env.SMTP_FROM}>`,
+        from: process.env.SMTP_FROM,
         to,
         subject,
         html,
+    }).then(info => {
+        console.log('✅ Email sent:', info);
+    }).catch(error => {
+        console.error('❌ Email failed:', error);
+        fs.appendFileSync(errorLogPath, `[${new Date().toISOString()}] ❌ Email failed: ${error}\n\n`);
     });
 };
 
@@ -101,26 +108,26 @@ export const sendAnswerNotificationToQuestioner = async (answer: IAnswer) => {
 };
 
 export const sendReviewNotificationToAnswerer = async (question: IQuestion) => {
-  try {
-    const answerer = await Answerer.findById(question.answerer_id);
-    const questioner = await Questioner.findById(question.questioner_id);
+    try {
+        const answerer = await Answerer.findById(question.answerer_id);
+        const questioner = await Questioner.findById(question.questioner_id);
 
-    if (!answerer || !questioner || !answerer.email_verified) return;
+        if (!answerer || !questioner || !answerer.email_verified) return;
 
-    const subject = `You received a new review from ${questioner.name}`;
-    const link = `${process.env.CLIENT_ORIGIN}/influencer/view-question?question_id=${question._id}`;
+        const subject = `You received a new review from ${questioner.name}`;
+        const link = `${process.env.CLIENT_ORIGIN}/influencer/view-question?question_id=${question._id}`;
 
-    await sendEmail({
-      to: answerer.email,
-      subject,
-      html: `
+        await sendEmail({
+            to: answerer.email,
+            subject,
+            html: `
         <p>Hi ${answerer.name},</p>
         <p>${questioner.name} has left a new review on your answer:</p>
         <p><a href="${link}">Click here to view the review</a></p>
       `,
-    });
-  } catch (err) {
-    console.error('❌ Failed to send review notification to answerer:', err);
-  }
+        });
+    } catch (err) {
+        console.error('❌ Failed to send review notification to answerer:', err);
+    }
 };
 
