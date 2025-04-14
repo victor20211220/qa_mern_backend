@@ -30,8 +30,7 @@ export const sendEmail = async ({to, subject, html}: EmailPayload) => {
         return;
     }
 
-    console.log('SMTP_USER:', process.env.SMTP_USER);
-    console.log('SMTP_PASS:', process.env.SMTP_PASS);
+    console.log('Loaded SMTP_PASS:', `"${process.env.SMTP_PASS}"`);
     const transporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST,
         port: parseInt(process.env.SMTP_PORT || '587', 10),
