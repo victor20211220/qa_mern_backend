@@ -1,5 +1,5 @@
 // src/routes/answerers.ts
-import express, {NextFunction, Request, Response} from 'express';
+import express, {Request, Response} from 'express';
 import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
@@ -54,6 +54,7 @@ router.get('/me', verifyToken, async (req: Request, res: Response): Promise<void
             total_questions_received: questionsReceived,
             total_questions_answered: questionsAnswered,
             total_earnings,
+            response_rate: questionsReceived > 0 ? questionsAnswered / questionsReceived : 0
         });
     } catch (err) {
         res.status(500).json({error: 'Failed to fetch profile'});
