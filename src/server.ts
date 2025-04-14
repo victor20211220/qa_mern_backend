@@ -14,7 +14,8 @@ const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI || '';
 
 app.use((req, res, next) => {
-    console.log(`[${req.method}] ${req.originalUrl}`);
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}] [${req.method}] ${req.originalUrl}`);
     next();
 });
 app.use('/webhooks', stripeWebhooks);
