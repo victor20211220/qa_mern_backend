@@ -4,7 +4,7 @@ import path from 'path';
 import Question, {IQuestion} from "../models/Question";
 import Answerer from "../models/Answerer";
 import QuestionType from "../models/QuestionType";
-import Answer, {IAnswer} from "../models/Answer";
+import {IAnswer} from "../models/Answer";
 import Questioner from "../models/Questioner";
 
 const logPath = path.join(__dirname, '../../mails.log');
@@ -33,7 +33,7 @@ export const sendEmail = async ({to, subject, html}: EmailPayload) => {
     const transporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST,
         port: parseInt(process.env.SMTP_PORT || '587', 10),
-        secure: false,
+        secure: true,
         auth: {
             user: process.env.SMTP_USER,
             pass: process.env.SMTP_PASS,
