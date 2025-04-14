@@ -183,7 +183,7 @@ router.post('/forgot-password', async (req, res): Promise<void> => {
     await sendEmail({
         to: email,
         subject: 'Reset your password',
-        html: `<p>Click to reset your password: <a href="${link}">${link}</a></p>`,
+        html: `<p>Click to reset your password: <a href="${link}">Here</a></p>`,
     });
     res.json({message: 'Password reset email sent'});
 });
