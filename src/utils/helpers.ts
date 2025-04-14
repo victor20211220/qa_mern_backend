@@ -38,6 +38,8 @@ export const sendEmail = async ({to, subject, html}: EmailPayload) => {
             user: process.env.SMTP_USER,
             pass: process.env.SMTP_PASS,
         },
+        logger: true, // logs full SMTP communication
+        debug: true,  // extra debug output
     });
 
     await transporter.sendMail({
