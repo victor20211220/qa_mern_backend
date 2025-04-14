@@ -42,6 +42,7 @@ export const sendEmail = async ({to, subject, html}: EmailPayload) => {
         },
         logger: true, // logs full SMTP communication
         debug: true,  // extra debug output
+        authMethod: 'LOGIN',
     });
 
     await transporter.sendMail({
