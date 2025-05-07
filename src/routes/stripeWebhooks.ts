@@ -20,10 +20,11 @@ router.post('/stripe', express.raw({type: 'application/json'}), async (req, res)
         );
         const session = event.data.object as Stripe.Checkout.Session;
         const questionId = session.metadata?.question_id;
-        // Success → keep the question
+        // Success → update status and paid of the question
         if (event.type === 'checkout.session.completed') {
             const question = await Question.findByIdAndUpdate(questionId, {
                 paid: true,
+                status: 0,
                 payment_intent_id: session.payment_intent
             });
             if (!question) {
@@ -33,17 +34,6 @@ router.post('/stripe', express.raw({type: 'application/json'}), async (req, res)
             }
             console.log(`✅ Payment succeeded for question ${questionId}`);
             await sendQuestionNotificationToAnswerer(question);
-        }
-
-        // Expired or canceled → delete the question
-        if (
-            event.type === 'checkout.session.expired' ||
-            event.type === 'checkout.session.async_payment_failed'
-        ) {
-            if (questionId) {
-                await Question.findByIdAndDelete(questionId);
-                console.log(`🗑️ Deleted unpaid question: ${questionId}`);
-            }
         }
     } catch (err) {
         console.error('Webhook error:', err);

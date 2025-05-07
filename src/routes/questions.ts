@@ -1,13 +1,12 @@
 // src/routes/questions.ts
-import express, {Request, Response, NextFunction} from 'express';
+import express, {Request, Response} from 'express';
 import multer from 'multer';
 import path from 'path';
 import mongoose from 'mongoose';
 import {verifyToken, AuthRequest} from '../middleware/authMiddleware';
-import Question, {IQuestion} from '../models/Question';
+import Question from '../models/Question';
 import QuestionType from '../models/QuestionType';
 import Stripe from 'stripe';
-import bodyParser from 'body-parser';
 import Answer from "../models/Answer";
 import {isLocal, sendQuestionNotificationToAnswerer} from "../utils/helpers";
 
@@ -68,8 +67,7 @@ router.post('/', verifyToken, upload.array('pictures'), async (req: Request, res
 
         //Create Stripe session
         const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-        let clientRedirectUrl = `${process.env.CLIENT_ORIGIN}/questioner/ask-question?answerer_id=${answerer_id}&question_type_id=${question_type_id}`;
-        clientRedirectUrl = `${process.env.CLIENT_ORIGIN}/questioner/my-questions`;
+        const clientRedirectUrl = `${process.env.CLIENT_ORIGIN}/questioner/my-questions`;
 
         const session = await stripe.checkout.sessions.create({
             line_items: [
@@ -113,7 +111,6 @@ router.get('/asked', verifyToken, async (req: Request, res: Response): Promise<v
 
         const filter: any = {
             questioner_id: authReq.user.id,
-            paid: true
         };
         if (status) {
             filter.status = parseInt(status as string);

@@ -21,7 +21,7 @@ const questionSchema = new Schema<IQuestion>({
     questioner_id: {type: Schema.Types.ObjectId, ref: 'Questioner', required: true},
     answerer_id: {type: Schema.Types.ObjectId, ref: 'Answerer', required: true},
     created_at: {type: Date, default: Date.now},
-    status: {type: Number, default: 0}, // 0: pending, 1: answered, 2: expired
+    status: {type: Number, default: 3}, // 0: pending, 1: answered, 2: expired, 3: not paid
     paid: {type: Boolean, default: false},
     payment_intent_id: { type: String },
 });

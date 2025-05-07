@@ -5,7 +5,6 @@ export interface IAnswerer extends Document {
     email: string;
     password: string;
     category_id: mongoose.Types.ObjectId;
-    hourly_rate: number;
     photo?: string;
     number_of_reviews: number;
     rating: number;
@@ -23,7 +22,6 @@ const answererSchema = new Schema<IAnswerer>({
     email: {type: String, required: true, unique: true},
     password: {type: String, required: true},
     category_id: {type: Schema.Types.ObjectId, ref: 'Category', required: true},
-    hourly_rate: {type: Number, required: true},
     photo: {type: String},
     number_of_reviews: {type: Number, default: 0},
     rating: {type: Number, default: 0.0},

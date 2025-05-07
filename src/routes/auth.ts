@@ -7,6 +7,9 @@ import Answerer from '../models/Answerer';
 import Questioner from '../models/Questioner';
 import {v4 as uuidv4} from 'uuid';
 import {sendEmail} from '../utils/helpers';
+import DefaultConfig from '../models/DefaultQuestionTypesConfiguration';
+import QuestionType from '../models/QuestionType';
+
 
 dotenv.config();
 const router = express.Router();
@@ -17,7 +20,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 // @ts-ignore
 router.post('/answerer/register', async (req, res): Promise<void> => {
     try {
-        const {name, email, password, category_id, hourly_rate, instagram, youtube, tiktok} = req.body;
+        const {name, email, password, category_id, instagram, youtube, tiktok} = req.body;
         const existing = await Answerer.findOne({email});
         if (existing) {
             res.status(409).json({error: 'Email already in use'});
@@ -31,7 +34,6 @@ router.post('/answerer/register', async (req, res): Promise<void> => {
             email,
             password: hashedPassword,
             category_id,
-            hourly_rate,
             instagram,
             youtube,
             tiktok,
@@ -153,6 +155,25 @@ router.get('/verify-email', async (req, res): Promise<void> => {
         user.email_verified = true;
         user.email_verification_token = "";
         await user.save();
+
+        if (type === 'answerer') {
+            // Create default question types for new answerer
+            const configs = await DefaultConfig.find();
+
+            for (const config of configs) {
+                const newType = new QuestionType({
+                    answerer_id: user._id,
+                    type: config.type,
+                    price: config.price,
+                    response_time: config.response_time,
+                    number_of_choice_options: config.number_of_choice_options,
+                    number_of_picture_options: config.number_of_picture_options,
+                    enabled: true,
+                });
+
+                await newType.save();
+            }
+        }
 
         res.send('✅ Email verified! You can now login.');
     } catch (err) {

@@ -67,7 +67,6 @@ router.put('/me', verifyToken, upload.single('photo'), async (req: Request, res:
         const authReq = req as AuthRequest;
         const {
             name,
-            hourly_rate,
             instagram,
             youtube,
             tiktok,
@@ -78,7 +77,6 @@ router.put('/me', verifyToken, upload.single('photo'), async (req: Request, res:
 
         const updateData: any = {
             name,
-            hourly_rate,
             instagram,
             youtube,
             tiktok,
