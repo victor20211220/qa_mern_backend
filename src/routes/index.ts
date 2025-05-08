@@ -9,6 +9,7 @@ import answerRoutes from './answers';
 import cronRoutes from './cron';
 import educationRoutes from './educations';
 import categoryRoutes from './categories';
+import withdrawalsRouter from './withdrawals';
 
 const router = express.Router();
 
@@ -21,5 +22,6 @@ router.use('/answers', answerRoutes);
 router.use('/cron', cronRoutes);
 router.use('/educations', educationRoutes);
 router.use('/categories', categoryRoutes);
+router.use('/withdrawals', withdrawalsRouter);
 
 export default router;
