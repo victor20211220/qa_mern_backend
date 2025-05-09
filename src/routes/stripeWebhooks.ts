@@ -23,8 +23,6 @@ router.post('/stripe', express.raw({type: 'application/json'}), async (req, res)
         // Success → update status and paid of the question
         if (event.type === 'checkout.session.completed') {
             const question = await Question.findByIdAndUpdate(questionId, {
-                paid: true,
-                status: 0,
                 payment_intent_id: session.payment_intent
             });
             if (!question) {

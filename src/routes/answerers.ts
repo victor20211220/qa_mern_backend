@@ -2,7 +2,6 @@
 import express, {Request, Response} from 'express';
 import multer from 'multer';
 import fs from 'fs';
-import path from 'path';
 import {AuthRequest, verifyToken} from '../middleware/authMiddleware';
 import Answerer from '../models/Answerer';
 import QuestionType from '../models/QuestionType';
@@ -11,21 +10,11 @@ import Earning from "../models/Earning";
 import Answer from "../models/Answer";
 import mongoose from 'mongoose';
 import Category from "../models/Category";
+import {multerStorage} from "../utils/helpers";
 
 const router = express.Router();
 
-// Multer setup for photo upload
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, 'uploads/');
-    },
-    filename: (req, file, cb) => {
-        const ext = path.extname(file.originalname);
-        cb(null, `${Date.now()}-${file.fieldname}${ext}`);
-    },
-});
-
-const upload = multer({storage});
+const upload = multer({storage: multerStorage});
 
 // GET current answerer's profile
 router.get('/me', verifyToken, async (req: Request, res: Response): Promise<void> => {

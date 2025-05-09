@@ -8,21 +8,12 @@ import Question from '../models/Question';
 import QuestionType from '../models/QuestionType';
 import Stripe from 'stripe';
 import Answer from "../models/Answer";
-import {isLocal, sendQuestionNotificationToAnswerer} from "../utils/helpers";
+import fs from 'fs';
+import {isLocal, multerStorage, sendQuestionNotificationToAnswerer} from "../utils/helpers";
 
 const router = express.Router();
 
-// Multer for picture uploads
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, 'uploads/');
-    },
-    filename: (req, file, cb) => {
-        const ext = path.extname(file.originalname);
-        cb(null, `${Date.now()}-${file.fieldname}${ext}`);
-    },
-});
-const upload = multer({storage});
+const upload = multer({storage: multerStorage});
 
 // POST /questions - Ask a question
 router.post('/', verifyToken, upload.array('pictures'), async (req: Request, res: Response): Promise<void> => {
@@ -36,7 +27,7 @@ router.post('/', verifyToken, upload.array('pictures'), async (req: Request, res
         } = req.body;
 
         if (!mongoose.Types.ObjectId.isValid(question_type_id)) {
-            res.status(400).json({error: 'Invalid question_type_id format'});
+            res.status(400).json({error: 'Invalid question type'});
             return;
         }
 
@@ -59,13 +50,44 @@ router.post('/', verifyToken, upload.array('pictures'), async (req: Request, res
         });
 
         await newQuestion.save();
-        const newQuestionId = String(newQuestion._id);
+        res.json({
+            id: newQuestion._id
+        });
+    } catch (err) {
+        console.error('❌ Question creation failed:', err);
+        res.status(500).json({error: 'Failed to create question'});
+    }
+});
 
-        if(isLocal){ //test
-            await sendQuestionNotificationToAnswerer(newQuestion);
+
+router.get('/:id/stripe-session', verifyToken, async (req: Request, res: Response): Promise<void> => {
+    try {
+        const questionId = req.params.id;
+        const authReq = req as AuthRequest;
+
+        const question = await Question.findById(questionId);
+        if (!question) {
+            res.status(404).json({error: 'Question not found'});
+            return;
         }
 
-        //Create Stripe session
+        // Make sure only the questioner can trigger this
+        if (!question.questioner_id.equals(authReq.user.id)) {
+             res.status(403).json({error: 'Unauthorized'});
+             return;
+        }
+
+        const questionType = await QuestionType.findById(question.question_type_id);
+        if (!questionType) {
+            res.status(400).json({error: 'Invalid question type'});
+            return;
+        }
+
+
+        if (isLocal) { //test
+            await sendQuestionNotificationToAnswerer(question);
+        }
+
         const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
         const clientRedirectUrl = `${process.env.CLIENT_ORIGIN}/questioner/my-questions`;
 
@@ -75,7 +97,7 @@ router.post('/', verifyToken, upload.array('pictures'), async (req: Request, res
                     price_data: {
                         currency: 'usd',
                         product_data: {name: 'Ask a Question'},
-                        unit_amount: req.body.price * 100, // Stripe uses cents
+                        unit_amount: questionType.price * 100,
                     },
                     quantity: 1,
                 },
@@ -84,18 +106,78 @@ router.post('/', verifyToken, upload.array('pictures'), async (req: Request, res
             success_url: `${clientRedirectUrl}?payment=success`,
             cancel_url: `${clientRedirectUrl}?payment=cancel`,
             metadata: {
-                question_id: newQuestionId
+                question_id: questionId,
             },
             payment_intent_data: {
                 metadata: {
-                    question_id: newQuestionId
-                }
-            }
+                    question_id: questionId,
+                },
+            },
         });
         res.json({url: session.url});
     } catch (err) {
-        console.error('❌ Question creation failed:', err);
-        res.status(500).json({error: 'Failed to create question'});
+        console.error('❌ Failed to create Stripe session:', err);
+        res.status(500).json({error: 'Stripe session creation failed'});
+    }
+});
+
+
+// PUT /questions/:id - Update question
+router.put('/:id', verifyToken, upload.array('pictures'), async (req: Request, res: Response): Promise<void> => {
+    try {
+        const authReq = req as AuthRequest;
+        const questionId = req.params.id;
+
+        const question = await Question.findById(questionId);
+        if (!question) {
+            res.status(404).json({error: 'Question not found'});
+            return;
+        }
+
+        if (!question.questioner_id.equals(authReq.user.id)) {
+            res.status(403).json({error: 'Unauthorized'});
+            return;
+        }
+        if(![0, 3].includes(question.status)){
+            res.status(400).json({error: 'Can not edit the question'});
+            return;
+        }
+
+        const choices = req.body.choices;
+
+        // Merge images
+        const pictures_existing = req.body.pictures_existing;
+        let existingImages: string[] = [];
+        if (Array.isArray(pictures_existing)) {
+            existingImages = pictures_existing;
+        } else if (typeof pictures_existing === 'string') {
+            existingImages = [pictures_existing];
+        }
+        console.log(`existingImages:`, existingImages);
+
+        const newUploads = req.files ? (req.files as Express.Multer.File[]).map(file => file.path) : [];
+        console.log(`newUploads:`, newUploads);
+        const mergedPictures = [...existingImages, ...newUploads];
+        console.log(`mergedPictures:`, mergedPictures);
+        // Delete removed old pictures
+        const oldPictures = question.pictures || [];
+        const removed = oldPictures.filter(p => !mergedPictures.includes(p));
+        removed.forEach(filePath => {
+            const fullPath = path.join(__dirname, '..', '..', filePath);
+            if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
+        });
+        console.log(`removed:`, removed);
+
+        await Question.findByIdAndUpdate(questionId, {
+            question: req.body.question,
+            choices: choices ? JSON.parse(choices) : [],
+            pictures: mergedPictures,
+        });
+
+        res.status(200).json({message: 'Question updated successfully'});
+    } catch (err) {
+        console.error('❌ PUT /questions/:id error:', err);
+        res.status(500).json({error: 'Failed to update question'});
     }
 });
 

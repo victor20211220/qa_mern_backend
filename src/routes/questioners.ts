@@ -1,10 +1,7 @@
 // src/routes/questioners.ts
-import express, {Request, Response, NextFunction} from 'express';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import express, {Request, Response} from 'express';
 import dotenv from 'dotenv';
 import multer from 'multer';
-import path from 'path';
 import {verifyToken, AuthRequest} from '../middleware/authMiddleware';
 import Questioner from '../models/Questioner';
 import Category from "../models/Category";
@@ -12,23 +9,13 @@ import Answerer from "../models/Answerer";
 import Question from "../models/Question";
 import Answer from "../models/Answer";
 import fs from "fs";
+import {multerStorage} from "../utils/helpers";
 
 dotenv.config();
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 
 // Multer setup
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, 'uploads/');
-    },
-    filename: (req, file, cb) => {
-        const ext = path.extname(file.originalname);
-        cb(null, `${Date.now()}-${file.fieldname}${ext}`);
-    },
-});
-
-const upload = multer({storage});
+const upload = multer({storage: multerStorage});
 
 // Get current questioner's profile
 router.get('/me', verifyToken, async (req: Request, res: Response): Promise<void> => {
@@ -83,7 +70,7 @@ router.put('/me', verifyToken, upload.single('photo'), async (req: Request, res:
 // GET /questioners/homepage_data (requires questioner login)
 router.get('/homepage_data', verifyToken, async (req: any, res): Promise<void> => {
     try {
-        // Optional: check if logged in user is a questioner
+        // Optional: check if log in user is a questioner
         if (req.user.type !== 'questioner') {
             res.status(403).json({error: 'Only questioners can access this endpoint'});
             return;

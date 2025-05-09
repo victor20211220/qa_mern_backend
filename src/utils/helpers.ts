@@ -6,6 +6,7 @@ import Answerer from "../models/Answerer";
 import QuestionType from "../models/QuestionType";
 import {IAnswer} from "../models/Answer";
 import Questioner from "../models/Questioner";
+import multer from 'multer';
 
 const logPath = path.join(__dirname, '../../mails.log');
 const errorLogPath = path.join(__dirname, '../../errors.log');
@@ -17,6 +18,17 @@ interface EmailPayload {
 }
 
 export const isLocal = process.env.NODE_ENV !== 'production';
+export const multerStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'uploads/');
+    },
+    filename: (req, file, cb) => {
+        const ext = path.extname(file.originalname);
+        const random = Math.round(Math.random() * 1e9); // extra randomness
+        cb(null, `${Date.now()}-${random}-${file.fieldname}${ext}`);
+    },
+});
+
 export const sendEmail = async ({to, subject, html}: EmailPayload) => {
     const timestamp = new Date().toISOString();
     const logEntry = `[${timestamp}] TO: ${to} | SUBJECT: ${subject}\n${html}\n\n`;
@@ -62,6 +74,10 @@ export const sendQuestionNotificationToAnswerer = async (question: IQuestion) =>
     if (!question) {
         return;
     }
+    await Question.findByIdAndUpdate(question._id, {
+        paid: true,
+        status: 0,
+    });
     const answerer = await Answerer.findById(question.answerer_id);
     const questionType = await QuestionType.findById(question.question_type_id);
     const responseTime = questionType?.response_time || 24; // fallback
