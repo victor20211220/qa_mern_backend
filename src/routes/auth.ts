@@ -244,7 +244,7 @@ router.post('/reset-password', async (req, res): Promise<void> => {
 passport.use('google-answerer', new GoogleStrategy({
     clientID: GOOGLE_CLIENT_ID!,
     clientSecret: GOOGLE_CLIENT_SECRET!,
-    callbackURL: '/api/auth/google/callback/answerer'
+    callbackURL: `${CLIENT_ORIGIN}/api/auth/google/callback/answerer`
 }, async (accessToken, refreshToken, profile, done) => {
     const { email, name, picture } = profile._json;
     let user = await Answerer.findOne({ email });
@@ -286,7 +286,7 @@ router.get('/google/callback/answerer',
 passport.use('google-questioner', new GoogleStrategy({
     clientID: GOOGLE_CLIENT_ID!,
     clientSecret: GOOGLE_CLIENT_SECRET!,
-    callbackURL: '/api/auth/google/callback/questioner',
+    callbackURL: `${CLIENT_ORIGIN}/api/auth/google/callback/questioner`
 }, async (_accessToken, _refreshToken, profile, done) => {
     const { email, name, picture } = profile._json;
 
