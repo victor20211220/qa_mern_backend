@@ -7,6 +7,8 @@ import QuestionType from "../models/QuestionType";
 import {IAnswer} from "../models/Answer";
 import Questioner from "../models/Questioner";
 import multer from 'multer';
+import dotenv from 'dotenv';
+dotenv.config();
 
 const logPath = path.join(__dirname, '../../mails.log');
 const errorLogPath = path.join(__dirname, '../../errors.log');
@@ -18,6 +20,10 @@ interface EmailPayload {
 }
 
 export const isLocal = process.env.NODE_ENV !== 'production';
+export const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN;
+export const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+export const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+
 export const multerStorage = multer.diskStorage({
     destination: (req, file, cb) => {
         cb(null, 'uploads/');

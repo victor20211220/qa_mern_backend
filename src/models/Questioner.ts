@@ -12,7 +12,7 @@ export interface IQuestioner extends Document {
 const questionerSchema = new Schema<IQuestioner>({
     name: {type: String, required: true},
     email: {type: String, required: true, unique: true},
-    password: {type: String, required: true},
+    password: {type: String},
     photo: {type: String}, // optional
     email_verified: {type: Boolean, default: false},
     email_verification_token: {type: String}

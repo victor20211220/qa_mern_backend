@@ -20,8 +20,8 @@ export interface IAnswerer extends Document {
 const answererSchema = new Schema<IAnswerer>({
     name: {type: String, required: true},
     email: {type: String, required: true, unique: true},
-    password: {type: String, required: true},
-    category_id: {type: Schema.Types.ObjectId, ref: 'Category', required: true},
+    password: {type: String},
+    category_id: {type: Schema.Types.ObjectId, ref: 'Category'},
     photo: {type: String},
     number_of_reviews: {type: Number, default: 0},
     rating: {type: Number, default: 0.0},

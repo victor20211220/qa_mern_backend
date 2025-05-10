@@ -6,10 +6,14 @@ import dotenv from 'dotenv';
 import Answerer from '../models/Answerer';
 import Questioner from '../models/Questioner';
 import {v4 as uuidv4} from 'uuid';
-import {sendEmail} from '../utils/helpers';
+import {CLIENT_ORIGIN, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, sendEmail} from '../utils/helpers';
 import DefaultConfig from '../models/DefaultQuestionTypesConfiguration';
 import QuestionType from '../models/QuestionType';
-
+import passport from 'passport';
+import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
+import axios from 'axios';
+import fs from 'fs';
+import path from 'path';
 
 dotenv.config();
 const router = express.Router();
@@ -29,20 +33,23 @@ router.post('/answerer/register', async (req, res): Promise<void> => {
 
         const hashedPassword = await bcrypt.hash(password, 10);
         const token = uuidv4();
-        const answerer = new Answerer({
+        const createData:any = {
             name,
             email,
             password: hashedPassword,
-            category_id,
             instagram,
             youtube,
             tiktok,
             email_verification_token: token,
             email_verified: false,
-        });
+        };
+        if(category_id){
+            createData.category_id = category_id;
+        }
+        const answerer = new Answerer(createData);
         await answerer.save();
 
-        const verifyUrl = `${process.env.CLIENT_ORIGIN}/verify-email?token=${token}&type=answerer`;
+        const verifyUrl = `${CLIENT_ORIGIN}/verify-email?token=${token}&type=answerer`;
         await sendEmail({
             to: email,
             subject: 'Verify your email',
@@ -96,7 +103,7 @@ router.post('/questioner/register', async (req, res): Promise<void> => {
         });
         await questioner.save();
 
-        const verifyUrl = `${process.env.CLIENT_ORIGIN}/verify-email?token=${token}&type=questioner`;
+        const verifyUrl = `${CLIENT_ORIGIN}/verify-email?token=${token}&type=questioner`;
         await sendEmail({
             to: email,
             subject: 'Verify your email',
@@ -199,7 +206,7 @@ router.post('/forgot-password', async (req, res): Promise<void> => {
     }
 
     const token = jwt.sign({id: user._id, role}, JWT_SECRET, {expiresIn: '30m'});
-    const link = `${process.env.CLIENT_ORIGIN}/reset-password?token=${token}`;
+    const link = `${CLIENT_ORIGIN}/reset-password?token=${token}`;
 
     await sendEmail({
         to: email,
@@ -217,7 +224,7 @@ router.post('/reset-password', async (req, res): Promise<void> => {
     }
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { id: string; role: string };
+        const decoded = jwt.verify(token, JWT_SECRET!) as { id: string; role: string };
 
         const hashed = await bcrypt.hash(password, 10);
 
@@ -233,6 +240,92 @@ router.post('/reset-password', async (req, res): Promise<void> => {
         res.status(400).json({error: 'Invalid or expired token'});
     }
 });
+
+passport.use('google-answerer', new GoogleStrategy({
+    clientID: GOOGLE_CLIENT_ID!,
+    clientSecret: GOOGLE_CLIENT_SECRET!,
+    callbackURL: '/api/auth/google/callback/answerer'
+}, async (accessToken, refreshToken, profile, done) => {
+    const { email, name, picture } = profile._json;
+    let user = await Answerer.findOne({ email });
+    if (!user) {
+        const createData:any = {
+            name,
+            email,
+            email_verified: true
+        }
+        if(picture){
+            // download and save profile image
+            const photo = `${Date.now()}-google.jpg`;
+            const res = await axios.get(picture, { responseType: 'stream' });
+            const writer = fs.createWriteStream(path.join('uploads', photo));
+            res.data.pipe(writer);
+            createData.photo = `uploads\\${photo}`;
+        }
+
+        user = new Answerer(createData);
+        await user.save();
+    }
+    done(null, user);
+}));
+
+router.get('/google/answerer',
+    passport.authenticate('google-answerer', { scope: ['profile', 'email'] }));
+
+router.get('/google/callback/answerer',
+    passport.authenticate('google-answerer', {
+        session: false,
+        failureRedirect: `${CLIENT_ORIGIN}/login`
+    }),
+    (req, res) => {
+        const user = req.user as any;
+        const token = jwt.sign({ id: user._id, type: 'answerer' }, JWT_SECRET);
+        res.redirect(`${CLIENT_ORIGIN}/?token=${token}&type=answerer`);
+    });
+
+passport.use('google-questioner', new GoogleStrategy({
+    clientID: GOOGLE_CLIENT_ID!,
+    clientSecret: GOOGLE_CLIENT_SECRET!,
+    callbackURL: '/api/auth/google/callback/questioner',
+}, async (_accessToken, _refreshToken, profile, done) => {
+    const { email, name, picture } = profile._json;
+
+    let user = await Questioner.findOne({ email });
+    if (!user) {
+        const createData:any = {
+            name,
+            email,
+            email_verified: true
+        }
+        if(picture){
+            // download and save profile image
+            const photo = `${Date.now()}-google.jpg`;
+            const res = await axios.get(picture, { responseType: 'stream' });
+            const writer = fs.createWriteStream(path.join('uploads', photo));
+            res.data.pipe(writer);
+            createData.photo = `uploads\\${photo}`;
+        }
+
+        user = new Questioner(createData);
+        await user.save();
+    }
+
+    done(null, user);
+}));
+
+router.get('/google/questioner',
+    passport.authenticate('google-questioner', { scope: ['profile', 'email'] }));
+
+router.get('/google/callback/questioner',
+    passport.authenticate('google-questioner', {
+        session: false,
+        failureRedirect: `${CLIENT_ORIGIN}/login`
+    }),
+    (req, res) => {
+        const user = req.user as any;
+        const token = jwt.sign({ id: user._id, type: 'questioner' }, JWT_SECRET);
+        res.redirect(`${CLIENT_ORIGIN}/?token=${token}&type=questioner`);
+    });
 
 
 export default router;
