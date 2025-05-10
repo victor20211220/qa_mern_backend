@@ -10,10 +10,12 @@ import {CLIENT_ORIGIN, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, sendEmail} from '
 import DefaultConfig from '../models/DefaultQuestionTypesConfiguration';
 import QuestionType from '../models/QuestionType';
 import passport from 'passport';
-import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
+import {Strategy as GoogleStrategy} from 'passport-google-oauth20';
 import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
+import { Types } from 'mongoose';
+
 
 dotenv.config();
 const router = express.Router();
@@ -33,7 +35,7 @@ router.post('/answerer/register', async (req, res): Promise<void> => {
 
         const hashedPassword = await bcrypt.hash(password, 10);
         const token = uuidv4();
-        const createData:any = {
+        const createData: any = {
             name,
             email,
             password: hashedPassword,
@@ -43,11 +45,13 @@ router.post('/answerer/register', async (req, res): Promise<void> => {
             email_verification_token: token,
             email_verified: false,
         };
-        if(category_id){
+        if (category_id) {
             createData.category_id = category_id;
         }
         const answerer = new Answerer(createData);
         await answerer.save();
+
+        if(answerer) await createDefaultQuestionTypesForAnswerer(answerer._id as Types.ObjectId);
 
         const verifyUrl = `${CLIENT_ORIGIN}/verify-email?token=${token}&type=answerer`;
         await sendEmail({
@@ -61,6 +65,26 @@ router.post('/answerer/register', async (req, res): Promise<void> => {
         res.status(500).json({error: 'Registration failed', details: err});
     }
 });
+
+const createDefaultQuestionTypesForAnswerer = async (id: string | Types.ObjectId ) => {
+    // Create default question types for new answerer
+    const configs = await DefaultConfig.find();
+
+    for (const config of configs) {
+        const newType = new QuestionType({
+            answerer_id: id,
+            type: config.type,
+            price: config.price,
+            response_time: config.response_time,
+            number_of_choice_options: config.number_of_choice_options,
+            number_of_picture_options: config.number_of_picture_options,
+            enabled: true,
+        });
+
+        await newType.save();
+    }
+}
+
 
 router.post('/answerer/login', async (req, res): Promise<void> => {
     try {
@@ -246,18 +270,18 @@ passport.use('google-answerer', new GoogleStrategy({
     clientSecret: GOOGLE_CLIENT_SECRET!,
     callbackURL: `${CLIENT_ORIGIN}/api/auth/google/callback/answerer`
 }, async (accessToken, refreshToken, profile, done) => {
-    const { email, name, picture } = profile._json;
-    let user = await Answerer.findOne({ email });
+    const {email, name, picture} = profile._json;
+    let user = await Answerer.findOne({email});
     if (!user) {
-        const createData:any = {
+        const createData: any = {
             name,
             email,
             email_verified: true
         }
-        if(picture){
+        if (picture) {
             // download and save profile image
             const photo = `${Date.now()}-google.jpg`;
-            const res = await axios.get(picture, { responseType: 'stream' });
+            const res = await axios.get(picture, {responseType: 'stream'});
             const writer = fs.createWriteStream(path.join('uploads', photo));
             res.data.pipe(writer);
             createData.photo = `uploads\\${photo}`;
@@ -265,12 +289,14 @@ passport.use('google-answerer', new GoogleStrategy({
 
         user = new Answerer(createData);
         await user.save();
+
+        if(user) await createDefaultQuestionTypesForAnswerer(user._id as Types.ObjectId);
     }
     done(null, user);
 }));
 
 router.get('/google/answerer',
-    passport.authenticate('google-answerer', { scope: ['profile', 'email'] }));
+    passport.authenticate('google-answerer', {scope: ['profile', 'email']}));
 
 router.get('/google/callback/answerer',
     passport.authenticate('google-answerer', {
@@ -279,7 +305,7 @@ router.get('/google/callback/answerer',
     }),
     (req, res) => {
         const user = req.user as any;
-        const token = jwt.sign({ id: user._id, type: 'answerer' }, JWT_SECRET);
+        const token = jwt.sign({id: user._id, type: 'answerer'}, JWT_SECRET);
         res.redirect(`${CLIENT_ORIGIN}/?token=${token}&type=answerer`);
     });
 
@@ -288,19 +314,19 @@ passport.use('google-questioner', new GoogleStrategy({
     clientSecret: GOOGLE_CLIENT_SECRET!,
     callbackURL: `${CLIENT_ORIGIN}/api/auth/google/callback/questioner`
 }, async (_accessToken, _refreshToken, profile, done) => {
-    const { email, name, picture } = profile._json;
+    const {email, name, picture} = profile._json;
 
-    let user = await Questioner.findOne({ email });
+    let user = await Questioner.findOne({email});
     if (!user) {
-        const createData:any = {
+        const createData: any = {
             name,
             email,
             email_verified: true
         }
-        if(picture){
+        if (picture) {
             // download and save profile image
             const photo = `${Date.now()}-google.jpg`;
-            const res = await axios.get(picture, { responseType: 'stream' });
+            const res = await axios.get(picture, {responseType: 'stream'});
             const writer = fs.createWriteStream(path.join('uploads', photo));
             res.data.pipe(writer);
             createData.photo = `uploads\\${photo}`;
@@ -314,7 +340,7 @@ passport.use('google-questioner', new GoogleStrategy({
 }));
 
 router.get('/google/questioner',
-    passport.authenticate('google-questioner', { scope: ['profile', 'email'] }));
+    passport.authenticate('google-questioner', {scope: ['profile', 'email']}));
 
 router.get('/google/callback/questioner',
     passport.authenticate('google-questioner', {
@@ -323,7 +349,7 @@ router.get('/google/callback/questioner',
     }),
     (req, res) => {
         const user = req.user as any;
-        const token = jwt.sign({ id: user._id, type: 'questioner' }, JWT_SECRET);
+        const token = jwt.sign({id: user._id, type: 'questioner'}, JWT_SECRET);
         res.redirect(`${CLIENT_ORIGIN}/?token=${token}&type=questioner`);
     });
 
