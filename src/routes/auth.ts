@@ -9,7 +9,7 @@ import {v4 as uuidv4} from 'uuid';
 import {
     CLIENT_ORIGIN,
     GOOGLE_CLIENT_ID,
-    GOOGLE_CLIENT_SECRET,
+    GOOGLE_CLIENT_SECRET, projectLog,
     sendEmail,
     SERVER_URL
 } from '../utils/helpers';
@@ -378,6 +378,7 @@ router.get('/facebook/callback/answerer', async (req, res) => {
         });
 
         const profile = profileRes.data;
+        await projectLog(`profile: \n${JSON.stringify(profile)}`);
         const email = profile.email || `${profile.id}@facebook.com`;
 
         let user = await Answerer.findOne({email});
