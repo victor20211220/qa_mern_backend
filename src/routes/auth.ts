@@ -398,6 +398,58 @@ router.get('/facebook/callback/answerer', async (req, res) => {
     }
 });
 
+router.get('/facebook/callback/questioner', async (req, res) => {
+    try {
+        const {code} = req.query;
+
+        // Step 1: Exchange code for access token
+        const tokenRes = await axios.get('https://graph.facebook.com/v19.0/oauth/access_token', {
+            params: {
+                client_id: FACEBOOK_CLIENT_ID,
+                client_secret: FACEBOOK_CLIENT_SECRET,
+                redirect_uri: `${SERVER_URL}/api/auth/facebook/callback/questioner`,
+                code,
+            }
+        });
+
+        const accessToken = tokenRes.data.access_token;
+
+        // Step 2: Get user profile
+        const profileRes = await axios.get(`https://graph.facebook.com/me`, {
+            params: {
+                access_token: accessToken,
+                fields: 'id,name,email,picture',
+            }
+        });
+
+        const profile = profileRes.data;
+        const email = profile.email || `${profile.id}@facebook.com`;
+
+        let user = await Questioner.findOne({email});
+        if (!user) {
+            const createData:any =  {
+                name: profile.name,
+                email,
+                email_verified: true,
+            };
+            const photo = profile.picture?.data?.url;
+            if (photo) {
+                createData.photo = await downloadAndSaveSocialPhoto(photo, "facebook");
+            }
+            user = new Questioner(createData);
+            await user.save();
+        }
+
+        const token = jwt.sign({id: user._id, type: 'questioner'}, JWT_SECRET);
+        res.redirect(`${CLIENT_ORIGIN}/?token=${token}&type=questioner`);
+    } catch (err) {
+        console.error('Facebook login error:', err);
+        res.redirect(`${CLIENT_ORIGIN}/login`);
+    }
+});
+
+
+
 
 const downloadAndSaveSocialPhoto = async (val: string = "", social: string) => {
     // download and save profile image
