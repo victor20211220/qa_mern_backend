@@ -6,7 +6,14 @@ import dotenv from 'dotenv';
 import Answerer from '../models/Answerer';
 import Questioner from '../models/Questioner';
 import {v4 as uuidv4} from 'uuid';
-import {CLIENT_ORIGIN, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, sendEmail, SERVER_URL} from '../utils/helpers';
+import {
+    CLIENT_ORIGIN,
+    GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET,
+    projectLog,
+    sendEmail,
+    SERVER_URL
+} from '../utils/helpers';
 import DefaultConfig from '../models/DefaultQuestionTypesConfiguration';
 import QuestionType from '../models/QuestionType';
 import passport from 'passport';
@@ -373,6 +380,7 @@ router.get('/facebook/callback/answerer', async (req, res) => {
         });
 
         const profile = profileRes.data;
+        await projectLog(`facebookProfileData:\n ${JSON.stringify(profile)}`);
         const email = profile.email || `${profile.id}@facebook.com`;
 
         let user = await Answerer.findOne({email});

@@ -10,8 +10,9 @@ import multer from 'multer';
 import dotenv from 'dotenv';
 dotenv.config();
 
-const logPath = path.join(__dirname, '../../mails.log');
-const errorLogPath = path.join(__dirname, '../../errors.log');
+const PROJECT_LOG_FILE = path.join(__dirname, '../../project.log');
+const MAIL_LOG_FILE = path.join(__dirname, '../../mails.log');
+const ERROR_LOG_FILE = path.join(__dirname, '../../errors.log');
 
 interface EmailPayload {
     to: string;
@@ -42,7 +43,7 @@ export const sendEmail = async ({to, subject, html}: EmailPayload) => {
 
 
     // Always log emails
-    fs.appendFileSync(logPath, logEntry);
+    fs.appendFileSync(MAIL_LOG_FILE, logEntry);
 
     if (isLocal) {
         console.log('📭 Email logged (not sent in dev)');
@@ -72,10 +73,12 @@ export const sendEmail = async ({to, subject, html}: EmailPayload) => {
         console.log('✅ Email sent:', info);
     }).catch(error => {
         console.error('❌ Email failed:', error);
-        fs.appendFileSync(errorLogPath, `[${new Date().toISOString()}] ❌ Email failed: ${error}\n\n`);
+        fs.appendFileSync(ERROR_LOG_FILE, `[${new Date().toISOString()}] ❌ Email failed: ${error}\n\n`);
     });
 };
-
+export const projectLog = async (message: string) => {
+    await fs.appendFileSync(PROJECT_LOG_FILE, message);
+}
 
 export const sendQuestionNotificationToAnswerer = async (question: IQuestion) => {
     if (!question) {
