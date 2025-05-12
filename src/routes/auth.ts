@@ -10,7 +10,6 @@ import {
     CLIENT_ORIGIN,
     GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET,
-    projectLog,
     sendEmail,
     SERVER_URL
 } from '../utils/helpers';
@@ -18,7 +17,6 @@ import DefaultConfig from '../models/DefaultQuestionTypesConfiguration';
 import QuestionType from '../models/QuestionType';
 import passport from 'passport';
 import {Strategy as GoogleStrategy} from 'passport-google-oauth20';
-import {Strategy as FacebookStrategy} from 'passport-facebook';
 import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
@@ -375,12 +373,11 @@ router.get('/facebook/callback/answerer', async (req, res) => {
         const profileRes = await axios.get(`https://graph.facebook.com/me`, {
             params: {
                 access_token: accessToken,
-                fields: 'id,name,email,picture',
+                fields: 'id,name,email,picture.width(128).height(128)',
             }
         });
 
         const profile = profileRes.data;
-        await projectLog(`facebookProfileData:\n ${JSON.stringify(profile)}`);
         const email = profile.email || `${profile.id}@facebook.com`;
 
         let user = await Answerer.findOne({email});
@@ -427,7 +424,7 @@ router.get('/facebook/callback/questioner', async (req, res) => {
         const profileRes = await axios.get(`https://graph.facebook.com/me`, {
             params: {
                 access_token: accessToken,
-                fields: 'id,name,email,picture',
+                fields: 'id,name,email,picture.width(128).height(128)',
             }
         });
 
