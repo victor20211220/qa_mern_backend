@@ -355,35 +355,44 @@ passport.use('facebook-answerer', new FacebookStrategy({
     clientID: FACEBOOK_CLIENT_ID!,
     clientSecret: FACEBOOK_CLIENT_SECRET!,
     callbackURL: `${SERVER_URL}/api/auth/facebook/callback/answerer`,
-    profileFields: ['id', 'displayName', 'photos', 'email'],
+    graphAPIVersion: 'v19.0', // 👈 force correct Graph version
+    // profileFields: ['id', 'displayName', 'photos', 'email'],
+    enableProof: true, // optional but recommended
+    passReqToCallback: false
 }, async (_accessToken, _refreshToken, profile, done) => {
-    const email = profile.emails?.[0]?.value || `${profile.id}@facebook.com`;
-    console.log('FB Name:', profile.displayName);
-    console.log('FB Email:', email);
-    console.log('FB Photo:', profile.photos?.[0]?.value);
-    let user = await Answerer.findOne({email});
-    if (!user) {
-        const existing = await Answerer.findOne({email});
-        if (existing) return done(null, existing);
+    console.log(profile);
+    try {
+        const email = profile.emails?.[0]?.value || `${profile.id}@facebook.com`;
+        console.log('FB Name:', profile.displayName);
+        console.log('FB Email:', email);
+        console.log('FB Photo:', profile.photos?.[0]?.value);
+        let user = await Answerer.findOne({email});
+        if (!user) {
+            const existing = await Answerer.findOne({email});
+            if (existing) return done(null, existing);
 
-        const createData: any = {
-            name: profile.displayName,
-            email,
-            email_verified: true,
+            const createData: any = {
+                name: profile.displayName,
+                email,
+                email_verified: true,
+            }
+            const photo = profile.photos?.[0]?.value;
+            if (photo) {
+                createData.picture = await downloadAndSaveSocialPhoto(photo, "facebook");
+            }
+            console.log(`createData:`, createData);
+            user = new Answerer(createData);
+            await user.save();
         }
-        const photo = profile.photos?.[0]?.value;
-        if (photo) {
-            createData.picture = await downloadAndSaveSocialPhoto(photo, "facebook");
-        }
-        console.log(`createData:`, createData);
-        user = new Answerer(createData);
-        await user.save();
+        return done(null, user);
+    } catch (err) {
+        console.error('FacebookStrategy error:', err);
+        return done(err);
     }
-    return done(null, user);
 }));
 
 
-router.get('/facebook/callback/answerer',
+router.get('/facebook/callback/answerer1',
     passport.authenticate('facebook-answerer', {
         session: false,
         failureRedirect: `${CLIENT_ORIGIN}/login`
@@ -394,6 +403,56 @@ router.get('/facebook/callback/answerer',
         const token = jwt.sign({id: user._id, type: 'answerer'}, JWT_SECRET);
         res.redirect(`${CLIENT_ORIGIN}/?token=${token}&type=answerer`);
     });
+
+router.get('/facebook/callback/answerer', async (req, res) => {
+    try {
+        const {code} = req.query;
+
+        // Step 1: Exchange code for access token
+        const tokenRes = await axios.get('https://graph.facebook.com/v19.0/oauth/access_token', {
+            params: {
+                client_id: FACEBOOK_CLIENT_ID,
+                client_secret: FACEBOOK_CLIENT_SECRET,
+                redirect_uri: `${SERVER_URL}/api/auth/facebook/callback/answerer`,
+                code,
+            }
+        });
+
+        const accessToken = tokenRes.data.access_token;
+
+        // Step 2: Get user profile
+        const profileRes = await axios.get(`https://graph.facebook.com/me`, {
+            params: {
+                access_token: accessToken,
+                fields: 'id,name,email,picture',
+            }
+        });
+
+        const profile = profileRes.data;
+        const email = profile.email || `${profile.id}@facebook.com`;
+
+        let user = await Answerer.findOne({email});
+        if (!user) {
+            const createData:any =  {
+                name: profile.name,
+                email,
+                email_verified: true,
+            };
+            const photo = profile.picture?.data?.url;
+            if (photo) {
+                createData.picture = await downloadAndSaveSocialPhoto(photo, "facebook");
+            }
+            user = new Answerer(createData);
+            await user.save();
+        }
+
+        const token = jwt.sign({id: user._id, type: 'answerer'}, JWT_SECRET);
+        res.redirect(`${CLIENT_ORIGIN}/?token=${token}&type=answerer`);
+    } catch (err) {
+        console.error('Facebook login error:', err);
+        res.redirect(`${CLIENT_ORIGIN}/login`);
+    }
+});
 
 
 const downloadAndSaveSocialPhoto = async (val: string = "", social: string) => {

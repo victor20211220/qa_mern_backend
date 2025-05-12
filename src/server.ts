@@ -12,7 +12,7 @@ dotenv.config();
 const app: Application = express();
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI || '';
-
+app.set('trust proxy', 1);
 app.use((req, res, next) => {
     const timestamp = new Date().toISOString();
     console.log(`[${timestamp}] [${req.method}] ${req.originalUrl}`);
