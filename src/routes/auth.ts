@@ -6,15 +6,16 @@ import dotenv from 'dotenv';
 import Answerer from '../models/Answerer';
 import Questioner from '../models/Questioner';
 import {v4 as uuidv4} from 'uuid';
-import {CLIENT_ORIGIN, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, sendEmail} from '../utils/helpers';
+import {CLIENT_ORIGIN, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, sendEmail, SERVER_URL} from '../utils/helpers';
 import DefaultConfig from '../models/DefaultQuestionTypesConfiguration';
 import QuestionType from '../models/QuestionType';
 import passport from 'passport';
 import {Strategy as GoogleStrategy} from 'passport-google-oauth20';
+import {Strategy as FacebookStrategy} from 'passport-facebook';
 import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
-import { Types } from 'mongoose';
+import {Types} from 'mongoose';
 
 
 dotenv.config();
@@ -51,7 +52,7 @@ router.post('/answerer/register', async (req, res): Promise<void> => {
         const answerer = new Answerer(createData);
         await answerer.save();
 
-        if(answerer) await createDefaultQuestionTypesForAnswerer(answerer._id as Types.ObjectId);
+        if (answerer) await createDefaultQuestionTypesForAnswerer(answerer._id as Types.ObjectId);
 
         const verifyUrl = `${CLIENT_ORIGIN}/verify-email?token=${token}&type=answerer`;
         await sendEmail({
@@ -66,7 +67,7 @@ router.post('/answerer/register', async (req, res): Promise<void> => {
     }
 });
 
-const createDefaultQuestionTypesForAnswerer = async (id: string | Types.ObjectId ) => {
+const createDefaultQuestionTypesForAnswerer = async (id: string | Types.ObjectId) => {
     // Create default question types for new answerer
     const configs = await DefaultConfig.find();
 
@@ -268,7 +269,7 @@ router.post('/reset-password', async (req, res): Promise<void> => {
 passport.use('google-answerer', new GoogleStrategy({
     clientID: GOOGLE_CLIENT_ID!,
     clientSecret: GOOGLE_CLIENT_SECRET!,
-    callbackURL: `${CLIENT_ORIGIN}/api/auth/google/callback/answerer`
+    callbackURL: `${SERVER_URL}/api/auth/google/callback/answerer`
 }, async (accessToken, refreshToken, profile, done) => {
     const {email, name, picture} = profile._json;
     let user = await Answerer.findOne({email});
@@ -279,18 +280,13 @@ passport.use('google-answerer', new GoogleStrategy({
             email_verified: true
         }
         if (picture) {
-            // download and save profile image
-            const photo = `${Date.now()}-google.jpg`;
-            const res = await axios.get(picture, {responseType: 'stream'});
-            const writer = fs.createWriteStream(path.join('uploads', photo));
-            res.data.pipe(writer);
-            createData.photo = `uploads\\${photo}`;
+            createData.picture = await downloadAndSaveSocialPhoto(picture, "google");
         }
 
         user = new Answerer(createData);
         await user.save();
 
-        if(user) await createDefaultQuestionTypesForAnswerer(user._id as Types.ObjectId);
+        if (user) await createDefaultQuestionTypesForAnswerer(user._id as Types.ObjectId);
     }
     done(null, user);
 }));
@@ -312,7 +308,7 @@ router.get('/google/callback/answerer',
 passport.use('google-questioner', new GoogleStrategy({
     clientID: GOOGLE_CLIENT_ID!,
     clientSecret: GOOGLE_CLIENT_SECRET!,
-    callbackURL: `${CLIENT_ORIGIN}/api/auth/google/callback/questioner`
+    callbackURL: `${SERVER_URL}/api/auth/google/callback/questioner`
 }, async (_accessToken, _refreshToken, profile, done) => {
     const {email, name, picture} = profile._json;
 
@@ -324,12 +320,7 @@ passport.use('google-questioner', new GoogleStrategy({
             email_verified: true
         }
         if (picture) {
-            // download and save profile image
-            const photo = `${Date.now()}-google.jpg`;
-            const res = await axios.get(picture, {responseType: 'stream'});
-            const writer = fs.createWriteStream(path.join('uploads', photo));
-            res.data.pipe(writer);
-            createData.photo = `uploads\\${photo}`;
+            createData.picture = await downloadAndSaveSocialPhoto(picture, "google");
         }
 
         user = new Questioner(createData);
@@ -353,5 +344,65 @@ router.get('/google/callback/questioner',
         res.redirect(`${CLIENT_ORIGIN}/?token=${token}&type=questioner`);
     });
 
+// src/config/passport.ts
+const FACEBOOK_CLIENT_ID = process.env.FACEBOOK_CLIENT_ID;
+const FACEBOOK_CLIENT_SECRET = process.env.FACEBOOK_CLIENT_SECRET;
+
+router.get('/facebook/answerer',
+    passport.authenticate('facebook-answerer', {scope: ['public_profile', 'email']}));
+
+passport.use('facebook-answerer', new FacebookStrategy({
+    clientID: FACEBOOK_CLIENT_ID!,
+    clientSecret: FACEBOOK_CLIENT_SECRET!,
+    callbackURL: `${SERVER_URL}/api/auth/facebook/callback/answerer`,
+    profileFields: ['id', 'displayName', 'photos', 'email'],
+}, async (_accessToken, _refreshToken, profile, done) => {
+    const email = profile.emails?.[0]?.value || `${profile.id}@facebook.com`;
+    console.log('FB Name:', profile.displayName);
+    console.log('FB Email:', email);
+    console.log('FB Photo:', profile.photos?.[0]?.value);
+    let user = await Answerer.findOne({email});
+    if (!user) {
+        const existing = await Answerer.findOne({email});
+        if (existing) return done(null, existing);
+
+        const createData: any = {
+            name: profile.displayName,
+            email,
+            email_verified: true,
+        }
+        const photo = profile.photos?.[0]?.value;
+        if (photo) {
+            createData.picture = await downloadAndSaveSocialPhoto(photo, "facebook");
+        }
+        console.log(`createData:`, createData);
+        user = new Answerer(createData);
+        await user.save();
+    }
+    return done(null, user);
+}));
+
+
+router.get('/facebook/callback/answerer',
+    passport.authenticate('facebook-answerer', {
+        session: false,
+        failureRedirect: `${CLIENT_ORIGIN}/login`
+    }),
+    (req, res) => {
+        const user = req.user as any;
+        console.log(user);
+        const token = jwt.sign({id: user._id, type: 'answerer'}, JWT_SECRET);
+        res.redirect(`${CLIENT_ORIGIN}/?token=${token}&type=answerer`);
+    });
+
+
+const downloadAndSaveSocialPhoto = async (val: string = "", social: string) => {
+    // download and save profile image
+    const photo = `${Date.now()}-${social}.jpg`;
+    const res = await axios.get(val, {responseType: 'stream'});
+    const writer = fs.createWriteStream(path.join('uploads', photo));
+    res.data.pipe(writer);
+    return `uploads\\${photo}`;
+}
 
 export default router;

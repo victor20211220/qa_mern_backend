@@ -24,6 +24,7 @@
     "node-cron": "^3.0.3",
     "nodemailer": "^6.10.0",
     "passport": "^0.7.0",
+    "passport-facebook": "^3.0.0",
     "passport-google-oauth20": "^2.0.0",
     "stripe": "^18.0.0"
   },
@@ -37,6 +38,7 @@
     "@types/node-cron": "^3.0.11",
     "@types/nodemailer": "^6.4.17",
     "@types/passport": "^1.0.17",
+    "@types/passport-facebook": "^3.0.3",
     "@types/passport-google-oauth20": "^2.0.16",
     "@types/uuid": "^10.0.0",
     "cross-env": "^7.0.3",

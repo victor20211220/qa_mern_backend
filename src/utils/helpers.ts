@@ -21,6 +21,7 @@ interface EmailPayload {
 
 export const isLocal = process.env.NODE_ENV !== 'production';
 export const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN;
+export const SERVER_URL = process.env.SERVER_URL;
 export const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 export const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 
