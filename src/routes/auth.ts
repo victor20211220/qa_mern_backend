@@ -388,6 +388,7 @@ router.get('/facebook/callback/answerer', async (req, res) => {
             }
             user = new Answerer(createData);
             await user.save();
+            if (user) await createDefaultQuestionTypesForAnswerer(user._id as Types.ObjectId);
         }
 
         const token = jwt.sign({id: user._id, type: 'answerer'}, JWT_SECRET);
