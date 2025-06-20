@@ -10,6 +10,7 @@ import cronRoutes from './cron';
 import educationRoutes from './educations';
 import categoryRoutes from './categories';
 import withdrawalsRouter from './withdrawals';
+import proxyRouter from './proxy';
 
 const router = express.Router();
 
@@ -23,5 +24,6 @@ router.use('/cron', cronRoutes);
 router.use('/educations', educationRoutes);
 router.use('/categories', categoryRoutes);
 router.use('/withdrawals', withdrawalsRouter);
+router.use('/proxy', proxyRouter);
 
 export default router;
