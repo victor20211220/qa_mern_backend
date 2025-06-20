@@ -100,7 +100,7 @@ export const sendQuestionNotificationToAnswerer = async (question: IQuestion) =>
                     <p>You have received a new question:</p>
                     <blockquote>${question.question}</blockquote>
                     <p>Please answer it within <strong>${responseTime} hour(s)</strong>.</p>
-                    <p><a href="${process.env.CLIENT_ORIGIN}/influencer/view-question?question_id=${question._id}">Click here to answer</a></p>
+                    <p><a href="${process.env.CLIENT_ORIGIN}/mentor/view-question?question_id=${question._id}">Click here to answer</a></p>
                   `,
         });
     }
@@ -145,7 +145,7 @@ export const sendReviewNotificationToAnswerer = async (question: IQuestion) => {
         if (!answerer || !questioner || !answerer.email_verified) return;
 
         const subject = `You received a new review from ${questioner.name}`;
-        const link = `${process.env.CLIENT_ORIGIN}/influencer/view-question?question_id=${question._id}`;
+        const link = `${process.env.CLIENT_ORIGIN}/mentor/view-question?question_id=${question._id}`;
 
         await sendEmail({
             to: answerer.email,
