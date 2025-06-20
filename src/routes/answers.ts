@@ -6,7 +6,7 @@ import Question from '../models/Question';
 import QuestionType from '../models/QuestionType';
 import Answerer from '../models/Answerer';
 import Earning from '../models/Earning';
-import {sendAnswerNotificationToQuestioner, sendReviewNotificationToAnswerer} from "../utils/helpers";
+import {PAYMENT_FEE, sendAnswerNotificationToQuestioner, sendReviewNotificationToAnswerer} from "../utils/helpers";
 
 const router = express.Router();
 
@@ -56,7 +56,7 @@ router.post('/:questionId', verifyToken, async (req: Request, res: Response): Pr
         // Add earning
         await Earning.create({
             answerer_id: question.answerer_id,
-            amount: questionType.price,
+            amount: questionType.price * ( 100 - PAYMENT_FEE) / 100,
             created_at: now,
         });
 

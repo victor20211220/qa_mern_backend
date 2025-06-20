@@ -25,6 +25,7 @@ export const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN;
 export const SERVER_URL = process.env.SERVER_URL;
 export const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 export const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+export const PAYMENT_FEE = parseFloat(process.env.PAYMENT_FEE || '0');;
 
 export const multerStorage = multer.diskStorage({
     destination: (req, file, cb) => {
