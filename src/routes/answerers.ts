@@ -62,6 +62,7 @@ router.put('/me', verifyToken, upload.single('photo'), async (req: Request, res:
             tiktok,
             expertise,
             bio,
+            expert_topics,
         } = req.body;
         const photo = req.file ? req.file.path : undefined;
 
@@ -72,6 +73,7 @@ router.put('/me', verifyToken, upload.single('photo'), async (req: Request, res:
             youtube,
             tiktok,
             bio,
+            expert_topics,
             expertise: expertise ? JSON.parse(expertise) : [],
         };
 

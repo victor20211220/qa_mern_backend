@@ -13,6 +13,7 @@ export interface IAnswerer extends Document {
     tiktok?: string;
     expertise?: string[];
     bio?: string;
+    expert_topics?: string;
     email_verified: boolean;
     email_verification_token: string;
 }
@@ -30,6 +31,7 @@ const answererSchema = new Schema<IAnswerer>({
     tiktok: {type: String},
     expertise: {type: [String], default: []},
     bio: {type: String},
+    expert_topics: {type: String},
     email_verified: {type: Boolean, default: false},
     email_verification_token: {type: String}
 });
