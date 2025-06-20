@@ -54,8 +54,8 @@ export const sendEmail = async ({to, subject, html}: EmailPayload) => {
     console.log('Loaded SMTP_PASS:', `"${process.env.SMTP_PASS}"`);
     const transporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST,
-        port: parseInt(process.env.SMTP_PORT || '587', 10),
-        secure: false,
+        port: parseInt(process.env.SMTP_PORT || '465', 10),
+        secure: true,
         auth: {
             user: process.env.SMTP_USER,
             pass: process.env.SMTP_PASS,
