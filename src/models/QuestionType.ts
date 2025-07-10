@@ -18,6 +18,8 @@ const questionTypeSchema = new Schema<IQuestionType>({
   response_time: { type: Number, default: 24 },
   enabled: { type: Boolean, default: false },
   answerer_id: { type: Schema.Types.ObjectId, ref: 'Answerer', required: true },
+}, {
+  timestamps: true
 });
 
 export default mongoose.model<IQuestionType>('QuestionType', questionTypeSchema);
