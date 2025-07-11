@@ -109,7 +109,7 @@ router.put('/me', verifyToken, upload.single('photo'), async (req: Request, res:
 router.get('/', async (req: Request, res: Response): Promise<void> => {
     try {
         const {name, category_id, page = 1, limit = 10} = req.query;
-        const query: any = {};
+        const query: any = { email_verified: true};
         const pageNumber = parseInt(page as string);
         const limitNumber = parseInt(limit as string);
         const skip = (pageNumber - 1) * limitNumber;

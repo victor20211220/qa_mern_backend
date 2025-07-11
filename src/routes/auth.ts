@@ -57,8 +57,6 @@ router.post('/answerer/register', async (req, res): Promise<void> => {
         const answerer = new Answerer(createData);
         await answerer.save();
 
-        if (answerer) await createDefaultQuestionTypesForAnswerer(answerer._id as Types.ObjectId);
-
         const verifyUrl = `${CLIENT_ORIGIN}/verify-email?token=${token}&type=answerer`;
         await sendEmail({
             to: email,
